@@ -18,12 +18,31 @@ class AuthRepository {
         }
     }
 
+    suspend fun loginOAuth(provider: String, providerId: String, email: String, name: String): Result<AuthResponse> {
+        return try {
+            val response = apiService.loginOAuth(com.example.myapplication.data.network.AuthRequest(provider, providerId, email, name))
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun register(email: String, password: String, name: String): Result<RegisterResponse> {
         return try {
             val response = apiService.register(RegisterRequest(email, password, name))
             Result.success(response)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    suspend fun logout(): Result<Unit> {
+        return try {
+            apiService.logout()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            // Even if backend call fails, we still want to log out locally
+            Result.success(Unit)
         }
     }
 }

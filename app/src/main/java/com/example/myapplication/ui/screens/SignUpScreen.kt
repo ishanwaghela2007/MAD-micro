@@ -1,17 +1,17 @@
 package com.example.myapplication.ui.screens
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -21,63 +21,27 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.ui.theme.VitalityGreen
 import com.example.myapplication.ui.theme.VitalityGreenDark
-
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.ui.viewmodel.AuthViewModel
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.ui.platform.LocalContext
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
-
 @Composable
-fun LoginScreen(
-    onLoginSuccess: () -> Unit,
-    onRegisterClick: () -> Unit,
+fun SignUpScreen(
+    onNavigateToLogin: () -> Unit,
+    onRegisterSuccess: () -> Unit,
     viewModel: AuthViewModel = viewModel()
 ) {
+    var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
 
-    val context = LocalContext.current
-    val gso = remember {
-        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestEmail()
-            .requestProfile()
-            .build()
-    }
-    val googleSignInClient = remember {
-        GoogleSignIn.getClient(context, gso)
-    }
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-        try {
-            val account = task.getResult(ApiException::class.java)
-            val googleEmail = account?.email ?: ""
-            val googleName = account?.displayName ?: ""
-            val googleId = account?.id ?: ""
-            
-            if (googleEmail.isNotEmpty() && googleId.isNotEmpty()) {
-                viewModel.loginWithGoogle(googleEmail, googleName, googleId)
-            } else {
-                viewModel.error = "Failed to get Google account details."
-            }
-        } catch (e: Exception) {
-            viewModel.error = "Google sign-in failed: ${e.message}"
-        }
-    }
-
-    LaunchedEffect(viewModel.isLoggedIn) {
-        if (viewModel.isLoggedIn) {
-            onLoginSuccess()
+    LaunchedEffect(viewModel.isRegistered) {
+        if (viewModel.isRegistered) {
+            onRegisterSuccess()
         }
     }
 
@@ -85,6 +49,7 @@ fun LoginScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -92,48 +57,44 @@ fun LoginScreen(
         // Logo Placeholder
         Box(
             modifier = Modifier
-                .size(80.dp)
+                .size(60.dp)
                 .background(
                     brush = Brush.verticalGradient(listOf(VitalityGreen, VitalityGreenDark)),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(15.dp)
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = "VF", color = Color.Black, fontWeight = FontWeight.ExtraBold, fontSize = 32.sp)
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "Vitality Flow",
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            text = "Elevate your potential today.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.tertiary
-        )
-
-        Spacer(modifier = Modifier.height(48.dp))
-
-        // Social Login
-        Button(
-            onClick = { launcher.launch(googleSignInClient.signInIntent) },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text("Continue with Google", color = MaterialTheme.colorScheme.onSurface)
+            Text(text = "VF", color = Color.Black, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.surface)
-            Text(text = " or ", modifier = Modifier.padding(horizontal = 8.dp), color = MaterialTheme.colorScheme.tertiary)
-            HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.surface)
-        }
+        Text(
+            text = "Join Vitality Flow",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = "Start your journey to greatness.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.tertiary
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Name Field
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("Full Name") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = VitalityGreen,
+                unfocusedBorderColor = MaterialTheme.colorScheme.surface
+            )
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -177,25 +138,49 @@ fun LoginScreen(
             )
         )
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Confirm Password Field
+        OutlinedTextField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = { Text("Confirm Password") },
+            visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            trailingIcon = {
+                val image = if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                val description = if (confirmPasswordVisible) "Hide password" else "Show password"
+                IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                    Icon(imageVector = image, contentDescription = description)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = VitalityGreen,
+                unfocusedBorderColor = MaterialTheme.colorScheme.surface
+            )
+        )
+
         viewModel.error?.let {
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Forgot password?",
-            modifier = Modifier.align(Alignment.End),
-            color = VitalityGreen,
-            style = MaterialTheme.typography.labelSmall
-        )
-
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Login Button
+        // Register Button
         Button(
-            onClick = { viewModel.login(email, password) },
+            onClick = {
+                if (name.isBlank() || email.isBlank() || password.isBlank()) {
+                    viewModel.error = "Please fill all fields"
+                } else if (password != confirmPassword) {
+                    viewModel.error = "Passwords do not match"
+                } else {
+                    viewModel.register(name, email, password)
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
@@ -216,16 +201,16 @@ fun LoginScreen(
                 if (viewModel.isLoading) {
                     CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
                 } else {
-                    Text(text = "Let's Get Started", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(text = "Create Account", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        TextButton(onClick = onRegisterClick) {
+        TextButton(onClick = onNavigateToLogin) {
             Text(
-                text = "Don't have an account? Sign Up",
+                text = "Already have an account? Sign In",
                 color = VitalityGreen,
                 style = MaterialTheme.typography.labelLarge
             )

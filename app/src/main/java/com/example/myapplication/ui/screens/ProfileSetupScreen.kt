@@ -14,14 +14,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.ui.theme.VitalityGreen
+import com.example.myapplication.ui.viewmodel.MainViewModel
 
 @Composable
-fun ProfileSetupScreen(onComplete: () -> Unit) {
+fun ProfileSetupScreen(
+    onComplete: () -> Unit,
+    viewModel: MainViewModel = viewModel()
+) {
     var age by remember { mutableStateOf("24") }
+    var height by remember { mutableStateOf("178") }
     var weight by remember { mutableStateOf("72") }
+    var goalWeight by remember { mutableStateOf("68") }
+    var gender by remember { mutableStateOf("Male") }
     var goalSelected by remember { mutableStateOf("Weight Loss") }
     var activitySelected by remember { mutableStateOf("Moderate") }
+    var dietSelected by remember { mutableStateOf("Vegetarian") }
 
     Scaffold(
         modifier = Modifier.fillMaxSize()
@@ -52,14 +61,16 @@ fun ProfileSetupScreen(onComplete: () -> Unit) {
                 Spacer(modifier = Modifier.height(32.dp))
                 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    InputPill("Age", age, Modifier.weight(1f))
-                    InputPill("Gender", "Male", Modifier.weight(1f))
+                    InputPill("Age", age, { age = it }, modifier = Modifier.weight(1f))
+                    GenderSelector("Gender", gender, { gender = it }, modifier = Modifier.weight(1f))
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    InputPill("Weight (kg)", weight, Modifier.weight(1f))
-                    InputPill("Height (cm)", "178", Modifier.weight(1f))
+                    InputPill("Weight (kg)", weight, { weight = it }, modifier = Modifier.weight(1f))
+                    InputPill("Height (cm)", height, { height = it }, modifier = Modifier.weight(1f))
                 }
+                Spacer(modifier = Modifier.height(16.dp))
+                InputPill("Goal Weight (kg)", goalWeight, { goalWeight = it }, modifier = Modifier.fillMaxWidth())
                 
                 Spacer(modifier = Modifier.height(32.dp))
                 Text(text = "What is your goal?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -76,14 +87,53 @@ fun ProfileSetupScreen(onComplete: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
                 ActivityLevelRow(activitySelected) { activitySelected = it }
 
+                Spacer(modifier = Modifier.height(32.dp))
+                Text(text = "Dietary Preference", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+                DietCard(
+                    emoji = "🥦",
+                    title = "Vegetarian",
+                    subtitle = "Plant-based, no meat or fish",
+                    isSelected = dietSelected == "Vegetarian"
+                ) { dietSelected = "Vegetarian" }
+                Spacer(modifier = Modifier.height(12.dp))
+                DietCard(
+                    emoji = "🍗",
+                    title = "Non-Vegetarian",
+                    subtitle = "Includes meat, fish & poultry",
+                    isSelected = dietSelected == "Non-Vegetarian"
+                ) { dietSelected = "Non-Vegetarian" }
+                Spacer(modifier = Modifier.height(12.dp))
+                DietCard(
+                    emoji = "🌱",
+                    title = "Vegan",
+                    subtitle = "No animal products at all",
+                    isSelected = dietSelected == "Vegan"
+                ) { dietSelected = "Vegan" }
+
                 Spacer(modifier = Modifier.height(48.dp))
                 Button(
-                    onClick = onComplete,
+                    onClick = {
+                        viewModel.onboard(
+                            height = height.toFloatOrNull() ?: 170f,
+                            weight = weight.toFloatOrNull() ?: 70f,
+                            goalWeight = goalWeight.toFloatOrNull() ?: 65f,
+                            activity = activitySelected,
+                            goal = goalSelected,
+                            diet = dietSelected,
+                            onComplete = onComplete
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = VitalityGreen),
+                    enabled = !viewModel.isLoading,
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text("Continue", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    if (viewModel.isLoading) {
+                        CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
+                    } else {
+                        Text("Continue", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    }
                 }
                 Spacer(modifier = Modifier.height(48.dp))
             }
@@ -92,16 +142,57 @@ fun ProfileSetupScreen(onComplete: () -> Unit) {
 }
 
 @Composable
-fun InputPill(label: String, value: String, modifier: Modifier) {
+fun InputPill(label: String, value: String, onValueChange: (String) -> Unit, modifier: Modifier) {
     Column(modifier = modifier) {
         Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp))
-        Surface(
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth().height(56.dp)
-        ) {
-            Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.padding(horizontal = 16.dp)) {
-                Text(text = value, fontSize = 16.sp, color = Color.White)
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = VitalityGreen,
+                unfocusedBorderColor = Color.Transparent,
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+            ),
+            textStyle = LocalTextStyle.current.copy(fontSize = 16.sp, color = Color.White)
+        )
+    }
+}
+
+@Composable
+fun GenderSelector(label: String, selectedGender: String, onGenderChange: (String) -> Unit, modifier: Modifier) {
+    var expanded by remember { mutableStateOf(false) }
+    val genders = listOf("Male", "Female", "Other")
+
+    Column(modifier = modifier) {
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp))
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth().height(56.dp).clickable { expanded = true }
+            ) {
+                Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Text(text = selectedGender, fontSize = 16.sp, color = Color.White)
+                }
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+            ) {
+                genders.forEach { gender ->
+                    DropdownMenuItem(
+                        text = { Text(gender, color = Color.White) },
+                        onClick = {
+                            onGenderChange(gender)
+                            expanded = false
+                        }
+                    )
+                }
             }
         }
     }
@@ -134,6 +225,56 @@ fun ActivityLevelRow(selected: String, onSelect: (String) -> Unit) {
             ) {
                 Box(modifier = Modifier.padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
                     Text(text = level, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = if (selected == level) Color.Black else Color.White)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DietCard(emoji: String, title: String, subtitle: String, isSelected: Boolean, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, VitalityGreen) else null,
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (isSelected) VitalityGreen.copy(alpha = 0.15f) else MaterialTheme.colorScheme.background),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = emoji, fontSize = 22.sp)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = if (isSelected) VitalityGreen else Color.White
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            }
+            if (isSelected) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = VitalityGreen,
+                    modifier = Modifier.size(20.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("✓", fontSize = 11.sp, color = Color.Black, fontWeight = FontWeight.ExtraBold)
+                    }
                 }
             }
         }
